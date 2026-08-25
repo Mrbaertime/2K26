@@ -3,7 +3,10 @@ using UnityEngine;
 
 public class GridManager : MonoBehaviour
 {
-    public static GridManager Instance { get; private set; }
+    public static GridManager Instance;
+
+    [Header("Grid Settings")]
+    [SerializeField] private float tileSize = 1f;
 
     private Dictionary<Vector2Int, Tile> tiles =
         new Dictionary<Vector2Int, Tile>();
@@ -11,58 +14,75 @@ public class GridManager : MonoBehaviour
     private void Awake()
     {
         Instance = this;
+    }
+
+    private void Start()
+    {
         RegisterAllTiles();
     }
 
     private void RegisterAllTiles()
     {
-        Tile[] allTiles = FindObjectsByType<Tile>(
-            FindObjectsSortMode.None
-        );
+        Tile[] allTiles =
+            FindObjectsByType<Tile>(
+                FindObjectsSortMode.None
+            );
 
         foreach (Tile tile in allTiles)
         {
-            tile.UpdateGridPosition();
+            Vector2Int gridPos = WorldToGrid(
+                tile.transform.position
+            );
 
-            if (tiles.ContainsKey(tile.gridPosition))
+            tile.gridPosition = gridPos;
+
+            if (!tiles.ContainsKey(gridPos))
+            {
+                tiles.Add(gridPos, tile);
+            }
+            else
             {
                 Debug.LogWarning(
-                    "มี Tile ซ้อนกันที่: " +
-                    tile.gridPosition
+                    "มี Tile ซ้อนกันที่ Grid Position: " +
+                    gridPos
                 );
-
-                continue;
             }
-
-            tiles.Add(
-                tile.gridPosition,
-                tile
-            );
         }
 
         Debug.Log(
-            "Registered Tiles: " +
-            tiles.Count
+            "Registered Tiles: " + tiles.Count
         );
+    }
+
+    public Vector2Int WorldToGrid(Vector3 worldPosition)
+    {
+        int x = Mathf.RoundToInt(
+            worldPosition.x / tileSize
+        );
+
+        int z = Mathf.RoundToInt(
+            worldPosition.z / tileSize
+        );
+
+        return new Vector2Int(x, z);
     }
 
     public Tile GetTile(Vector2Int position)
     {
-        tiles.TryGetValue(
+        if (tiles.TryGetValue(
             position,
-            out Tile tile
-        );
+            out Tile tile))
+        {
+            return tile;
+        }
 
-        return tile;
+        return null;
     }
 
     public List<Tile> GetNeighbours(Tile tile)
     {
         List<Tile> neighbours =
             new List<Tile>();
-
-        Vector2Int position =
-            tile.gridPosition;
 
         Vector2Int[] directions =
         {
@@ -75,7 +95,7 @@ public class GridManager : MonoBehaviour
         foreach (Vector2Int direction in directions)
         {
             Vector2Int neighbourPosition =
-                position + direction;
+                tile.gridPosition + direction;
 
             Tile neighbour =
                 GetTile(neighbourPosition);

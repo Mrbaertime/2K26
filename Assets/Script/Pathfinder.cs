@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class Pathfinder : MonoBehaviour
 {
-    public static Pathfinder Instance { get; private set; }
+    public static Pathfinder Instance;
 
     private void Awake()
     {
@@ -12,14 +12,13 @@ public class Pathfinder : MonoBehaviour
 
     public List<Tile> FindPath(
         Tile startTile,
-        Tile targetTile
-    )
+        Tile targetTile)
     {
-        if (startTile == null || targetTile == null)
+        if (startTile == null ||
+            targetTile == null)
+        {
             return null;
-
-        if (!targetTile.isWalkable)
-            return null;
+        }
 
         List<Tile> openSet =
             new List<Tile>();
@@ -48,55 +47,56 @@ public class Pathfinder : MonoBehaviour
 
         while (openSet.Count > 0)
         {
-            Tile currentTile =
-                GetLowestFScore(
+            Tile current =
+                GetLowestScoreTile(
                     openSet,
                     fScore
                 );
 
-            if (currentTile == targetTile)
+            if (current == targetTile)
             {
-                return RetracePath(
+                return ReconstructPath(
                     cameFrom,
-                    currentTile
+                    current
                 );
             }
 
-            openSet.Remove(currentTile);
-            closedSet.Add(currentTile);
+            openSet.Remove(current);
 
-            foreach (Tile neighbour in
-                     GridManager.Instance.GetNeighbours(currentTile))
+            closedSet.Add(current);
+
+            List<Tile> neighbours =
+                GridManager.Instance
+                    .GetNeighbours(current);
+
+            foreach (Tile neighbour in neighbours)
             {
                 if (closedSet.Contains(neighbour))
                     continue;
 
                 int tentativeGScore =
-                    GetScore(gScore, currentTile)
-                    + 1;
+                    gScore[current] + 1;
 
-                if (!openSet.Contains(neighbour))
+                if (!gScore.ContainsKey(neighbour) ||
+                    tentativeGScore < gScore[neighbour])
                 {
-                    openSet.Add(neighbour);
+                    cameFrom[neighbour] = current;
+
+                    gScore[neighbour] =
+                        tentativeGScore;
+
+                    fScore[neighbour] =
+                        tentativeGScore +
+                        GetDistance(
+                            neighbour,
+                            targetTile
+                        );
+
+                    if (!openSet.Contains(neighbour))
+                    {
+                        openSet.Add(neighbour);
+                    }
                 }
-                else if (tentativeGScore >=
-                         GetScore(gScore, neighbour))
-                {
-                    continue;
-                }
-
-                cameFrom[neighbour] =
-                    currentTile;
-
-                gScore[neighbour] =
-                    tentativeGScore;
-
-                fScore[neighbour] =
-                    tentativeGScore +
-                    GetDistance(
-                        neighbour,
-                        targetTile
-                    );
             }
         }
 
@@ -104,19 +104,23 @@ public class Pathfinder : MonoBehaviour
         return null;
     }
 
-    private Tile GetLowestFScore(
+    private Tile GetLowestScoreTile(
         List<Tile> tiles,
-        Dictionary<Tile, int> fScore
-    )
+        Dictionary<Tile, int> fScore)
     {
         Tile lowestTile = tiles[0];
+
         int lowestScore =
-            GetScore(fScore, lowestTile);
+            fScore.ContainsKey(lowestTile)
+                ? fScore[lowestTile]
+                : int.MaxValue;
 
         foreach (Tile tile in tiles)
         {
             int score =
-                GetScore(fScore, tile);
+                fScore.ContainsKey(tile)
+                    ? fScore[tile]
+                    : int.MaxValue;
 
             if (score < lowestScore)
             {
@@ -128,55 +132,29 @@ public class Pathfinder : MonoBehaviour
         return lowestTile;
     }
 
-    private int GetScore(
-        Dictionary<Tile, int> scores,
-        Tile tile
-    )
-    {
-        if (scores.TryGetValue(
-            tile,
-            out int score
-        ))
-        {
-            return score;
-        }
-
-        return int.MaxValue;
-    }
-
-    private List<Tile> RetracePath(
+    private List<Tile> ReconstructPath(
         Dictionary<Tile, Tile> cameFrom,
-        Tile currentTile
-    )
+        Tile current)
     {
         List<Tile> path =
             new List<Tile>();
 
-        path.Add(currentTile);
+        path.Add(current);
 
-        while (cameFrom.ContainsKey(currentTile))
+        while (cameFrom.ContainsKey(current))
         {
-            currentTile =
-                cameFrom[currentTile];
-
-            path.Add(currentTile);
+            current = cameFrom[current];
+            path.Add(current);
         }
 
         path.Reverse();
-
-        // เอา Start Tile ออก
-        if (path.Count > 0)
-        {
-            path.RemoveAt(0);
-        }
 
         return path;
     }
 
     private int GetDistance(
         Tile a,
-        Tile b
-    )
+        Tile b)
     {
         int distanceX =
             Mathf.Abs(
