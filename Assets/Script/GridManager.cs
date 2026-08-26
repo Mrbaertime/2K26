@@ -86,11 +86,11 @@ public class GridManager : MonoBehaviour
 
         Vector2Int[] directions =
         {
-            Vector2Int.up,
-            Vector2Int.down,
-            Vector2Int.left,
-            Vector2Int.right
-        };
+        Vector2Int.up,
+        Vector2Int.down,
+        Vector2Int.left,
+        Vector2Int.right
+    };
 
         foreach (Vector2Int direction in directions)
         {
@@ -101,7 +101,8 @@ public class GridManager : MonoBehaviour
                 GetTile(neighbourPosition);
 
             if (neighbour != null &&
-                neighbour.isWalkable)
+                neighbour.isWalkable &&
+                !neighbour.IsOccupied)
             {
                 neighbours.Add(neighbour);
             }

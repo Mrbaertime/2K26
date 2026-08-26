@@ -7,7 +7,6 @@ public class PlayerMove : MonoBehaviour
     [SerializeField] private float moveSpeed = 3f;
 
     private List<Tile> currentPath;
-
     private int pathIndex;
 
     private Tile currentTile;
@@ -51,6 +50,17 @@ public class PlayerMove : MonoBehaviour
                 name +
                 " ไม่ได้อยู่บน Tile!"
             );
+
+            return;
+        }
+
+        // ลงทะเบียนว่าตัวละครอยู่บน Tile นี้
+        if (!currentTile.SetOccupant(gameObject))
+        {
+            Debug.LogError(
+                name +
+                " พยายามยืนบน Tile ที่มีคนอยู่แล้ว!"
+            );
         }
     }
 
@@ -66,6 +76,28 @@ public class PlayerMove : MonoBehaviour
 
         if (currentTile == null)
             return;
+
+        if (targetTile == null)
+            return;
+
+        // =========================
+        // ตรวจว่าปลายทางมีคนอยู่ไหม
+        // =========================
+
+        if (targetTile.IsOccupied)
+        {
+            Debug.Log(
+                "Tile นี้มี " +
+                targetTile.Occupant.name +
+                " อยู่แล้ว!"
+            );
+
+            return;
+        }
+
+        // =========================
+        // หา Path
+        // =========================
 
         currentPath =
             Pathfinder.Instance.FindPath(
@@ -85,11 +117,30 @@ public class PlayerMove : MonoBehaviour
 
         pathIndex = 0;
 
-        // ถ้า Path ตัวแรกคือ Tile ที่กำลังยืนอยู่
+        // Path ตัวแรกคือ Tile ที่เรายืนอยู่
         if (currentPath.Count > 0 &&
             currentPath[0] == currentTile)
         {
             pathIndex = 1;
+        }
+
+        // ป้องกันกรณี Path มี Tile ที่ถูกยึดอยู่ระหว่างทาง
+        for (int i = pathIndex;
+             i < currentPath.Count;
+             i++)
+        {
+            Tile tile = currentPath[i];
+
+            if (tile.IsOccupied)
+            {
+                Debug.Log(
+                    "เส้นทางถูกขวางโดย " +
+                    tile.Occupant.name
+                );
+
+                currentPath = null;
+                return;
+            }
         }
 
         isMoving = true;
@@ -109,11 +160,11 @@ public class PlayerMove : MonoBehaviour
             return;
         }
 
-        Tile targetTile =
+        Tile nextTile =
             currentPath[pathIndex];
 
         Vector3 targetPosition =
-            targetTile.transform.position;
+            nextTile.transform.position;
 
         targetPosition.y =
             transform.position.y;
@@ -125,6 +176,7 @@ public class PlayerMove : MonoBehaviour
                 moveSpeed * Time.deltaTime
             );
 
+        // ถึง Tile แล้ว
         if (Vector3.Distance(
             transform.position,
             targetPosition
@@ -133,15 +185,37 @@ public class PlayerMove : MonoBehaviour
             transform.position =
                 targetPosition;
 
+            // เอา Player ออกจาก Tile เก่า
+            currentTile.ClearOccupant(
+                gameObject
+            );
+
+            // เปลี่ยน Tile ปัจจุบัน
             currentTile =
-                targetTile;
+                nextTile;
+
+            // ใส่ Player ลง Tile ใหม่
+            currentTile.SetOccupant(
+                gameObject
+            );
 
             pathIndex++;
+
+            // เดินถึงปลายทางแล้ว
+            if (pathIndex >= currentPath.Count)
+            {
+                isMoving = false;
+            }
         }
     }
 
     public Tile GetCurrentTile()
     {
         return currentTile;
+    }
+
+    public bool IsMoving()
+    {
+        return isMoving;
     }
 }
