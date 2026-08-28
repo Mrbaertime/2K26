@@ -2,31 +2,56 @@ using UnityEngine;
 
 public class Trap : MonoBehaviour
 {
-    // กรณีที่ 1: กับดักเป็นแบบ Trigger (ติ๊ก Is Trigger - เดินทะลุได้ เช่น พื้นที่อาบยาพิษ)
-    private void OnTriggerEnter(Collider other)
+    private Tile tile;
+
+    private void Start()
     {
-        if (other.CompareTag("Player"))
+        tile = GetComponent<Tile>();
+
+        if (tile == null)
         {
-            ActivateTrap(other.gameObject);
+            Debug.LogError(
+                name + " ไม่มี Tile component!"
+            );
         }
     }
 
-    // กรณีที่ 2: กับดักเป็นวัตถุแข็ง (ไม่ได้ติ๊ก Is Trigger - เช่น หนามโลหะ หรือกล่องกับดัก)
-    private void OnCollisionEnter(Collision collision)
+    private void Update()
     {
-        // สังเกตว่า Collision จะใช้ .gameObject นำหน้าก่อนเรียก CompareTag
-        if (collision.gameObject.CompareTag("Player"))
+        CheckTrap();
+    }
+
+    private void CheckTrap()
+    {
+        if (tile == null)
+            return;
+
+        if (!tile.IsOccupied)
+            return;
+
+        GameObject occupant = tile.Occupant;
+
+        if (occupant == null)
+            return;
+
+        if (occupant.CompareTag("Player"))
         {
-            ActivateTrap(collision.gameObject);
+            ActivateTrap(occupant);
         }
     }
 
-    // สร้างฟังก์ชันแยกออกมา เพื่อไม่ให้ต้องเขียนโค้ดซ้ำกัน
     private void ActivateTrap(GameObject target)
     {
-        Debug.Log("โดนกับดัก! Game Over");
+        Debug.Log(
+            "โดนกับดัก! " +
+            target.name +
+            " Game Over"
+        );
 
-        // ทำลายผู้เล่น
+        // เอา Player ออกจาก Tile ก่อน
+        tile.ClearOccupant(target);
+
+        // ทำลาย Player
         Destroy(target);
     }
 }
