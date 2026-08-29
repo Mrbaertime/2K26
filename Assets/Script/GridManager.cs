@@ -8,6 +8,9 @@ public class GridManager : MonoBehaviour
     [Header("Grid Settings")]
     [SerializeField] private float tileSize = 1f;
 
+    [Header("Path Blocking")]
+    [SerializeField] private LayerMask wallLayer;
+
     private Dictionary<Vector2Int, Tile> tiles =
         new Dictionary<Vector2Int, Tile>();
 
@@ -30,9 +33,10 @@ public class GridManager : MonoBehaviour
 
         foreach (Tile tile in allTiles)
         {
-            Vector2Int gridPos = WorldToGrid(
-                tile.transform.position
-            );
+            Vector2Int gridPos =
+                WorldToGrid(
+                    tile.transform.position
+                );
 
             tile.gridPosition = gridPos;
 
@@ -50,24 +54,29 @@ public class GridManager : MonoBehaviour
         }
 
         Debug.Log(
-            "Registered Tiles: " + tiles.Count
+            "Registered Tiles: " +
+            tiles.Count
         );
     }
 
-    public Vector2Int WorldToGrid(Vector3 worldPosition)
+    public Vector2Int WorldToGrid(
+        Vector3 worldPosition)
     {
-        int x = Mathf.RoundToInt(
-            worldPosition.x / tileSize
-        );
+        int x =
+            Mathf.RoundToInt(
+                worldPosition.x / tileSize
+            );
 
-        int z = Mathf.RoundToInt(
-            worldPosition.z / tileSize
-        );
+        int z =
+            Mathf.RoundToInt(
+                worldPosition.z / tileSize
+            );
 
         return new Vector2Int(x, z);
     }
 
-    public Tile GetTile(Vector2Int position)
+    public Tile GetTile(
+        Vector2Int position)
     {
         if (tiles.TryGetValue(
             position,
@@ -100,14 +109,57 @@ public class GridManager : MonoBehaviour
             Tile neighbour =
                 GetTile(neighbourPosition);
 
-            if (neighbour != null &&
-                neighbour.isWalkable &&
-                !neighbour.IsOccupied)
-            {
-                neighbours.Add(neighbour);
-            }
+            if (neighbour == null)
+                continue;
+
+            if (!neighbour.isWalkable)
+                continue;
+
+            if (neighbour.IsOccupied)
+                continue;
+
+            // ⭐ ตรวจว่ามีกำแพงขวางระหว่างสอง Tile หรือไม่
+            if (IsBlockedByWall(tile, neighbour))
+                continue;
+
+            neighbours.Add(neighbour);
         }
 
         return neighbours;
+    }
+    private bool IsBlockedByWall(
+    Tile from,
+    Tile to)
+    {
+        Vector3 start =
+            from.transform.position;
+
+        start.y += 0.5f;
+
+        Vector3 direction =
+            (to.transform.position -
+             from.transform.position).normalized;
+
+        float distance =
+            Vector3.Distance(
+                from.transform.position,
+                to.transform.position
+            );
+
+        bool blocked = Physics.Raycast(
+            start,
+            direction,
+            distance,
+            wallLayer
+        );
+
+        Debug.DrawRay(
+            start,
+            direction * distance,
+            blocked ? Color.red : Color.green,
+            1f
+        );
+
+        return blocked;
     }
 }

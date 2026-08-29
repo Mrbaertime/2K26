@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using System.Linq;
 
 public class PlayerController : MonoBehaviour
 {
@@ -37,44 +38,56 @@ public class PlayerController : MonoBehaviour
         Ray ray =
             mainCamera.ScreenPointToRay(mousePosition);
 
-        if (!Physics.Raycast(
-            ray,
-            out RaycastHit hit))
+        // ตรวจทุก Collider ที่ Ray ชน
+        RaycastHit[] hits =
+            Physics.RaycastAll(ray);
+
+        // เรียงจากสิ่งที่อยู่ใกล้ Camera → ไกล Camera
+        System.Array.Sort(
+            hits,
+            (a, b) =>
+                a.distance.CompareTo(b.distance)
+        );
+
+        foreach (RaycastHit hit in hits)
         {
-            return;
-        }
+            // =========================
+            // คลิก Player
+            // =========================
 
-        // =========================
-        // คลิก Player
-        // =========================
+            PlayerMove clickedPlayer =
+                hit.collider.GetComponent<PlayerMove>();
 
-        PlayerMove clickedPlayer =
-            hit.collider.GetComponent<PlayerMove>();
-
-        if (clickedPlayer != null)
-        {
-            SelectPlayer(clickedPlayer);
-            return;
-        }
-
-        // =========================
-        // คลิก Tile
-        // =========================
-
-        Tile clickedTile =
-            hit.collider.GetComponent<Tile>();
-
-        if (clickedTile != null)
-        {
-            if (!clickedTile.isWalkable)
-                return;
-
-            if (selectedPlayer != null)
+            if (clickedPlayer != null)
             {
-                selectedPlayer.MoveToTile(
-                    clickedTile
-                );
+                SelectPlayer(clickedPlayer);
+                return;
             }
+
+            // =========================
+            // คลิก Tile
+            // =========================
+
+            Tile clickedTile =
+                hit.collider.GetComponent<Tile>();
+
+            if (clickedTile != null)
+            {
+                if (!clickedTile.isWalkable)
+                    return;
+
+                if (selectedPlayer != null)
+                {
+                    selectedPlayer.MoveToTile(
+                        clickedTile
+                    );
+                }
+
+                return;
+            }
+
+            // ถ้าเป็น Wall / Object อื่น
+            // ให้ข้ามไปดู Collider ถัดไป
         }
     }
 
