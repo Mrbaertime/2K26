@@ -170,4 +170,38 @@ public class Pathfinder : MonoBehaviour
 
         return distanceX + distanceZ;
     }
+
+    //hightlight
+    public List<Tile> GetAllReachableTiles(Tile startTile)
+    {
+        List<Tile> reachable = new List<Tile>();
+        if (startTile == null) return reachable;
+
+        Queue<Tile> queue = new Queue<Tile>();
+        HashSet<Tile> visited = new HashSet<Tile>();
+
+        queue.Enqueue(startTile);
+        visited.Add(startTile);
+        reachable.Add(startTile); // นับช่องที่ตัวเองยืนอยู่ด้วย
+
+        while (queue.Count > 0)
+        {
+            Tile current = queue.Dequeue();
+
+            // ใช้ GetNeighbours จาก GridManager ของคุณ (ซึ่งเช็กกำแพงให้อยู่แล้ว!)
+            List<Tile> neighbours = GridManager.Instance.GetNeighbours(current);
+
+            foreach (Tile neighbour in neighbours)
+            {
+                if (!visited.Contains(neighbour))
+                {
+                    visited.Add(neighbour);
+                    queue.Enqueue(neighbour);
+                    reachable.Add(neighbour);
+                }
+            }
+        }
+
+        return reachable;
+    }
 }

@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
-using System.Linq;
+using System.Collections.Generic;
 
 public class PlayerController : MonoBehaviour
 {
@@ -8,6 +8,9 @@ public class PlayerController : MonoBehaviour
 
     private PlayerMove selectedPlayer;
     private Camera mainCamera;
+
+    // เก็บรายการช่องที่กำลังแสดงสีอยู่
+    private List<Tile> currentHighlightedTiles = new List<Tile>();
 
     private void Awake()
     {
@@ -26,79 +29,75 @@ public class PlayerController : MonoBehaviour
 
     private void HandleClick()
     {
-        if (Mouse.current == null)
-            return;
+        if (Mouse.current == null) return;
+        if (!Mouse.current.leftButton.wasPressedThisFrame) return;
 
-        if (!Mouse.current.leftButton.wasPressedThisFrame)
-            return;
+        Vector2 mousePosition = Mouse.current.position.ReadValue();
+        Ray ray = mainCamera.ScreenPointToRay(mousePosition);
+        RaycastHit[] hits = Physics.RaycastAll(ray);
 
-        Vector2 mousePosition =
-            Mouse.current.position.ReadValue();
-
-        Ray ray =
-            mainCamera.ScreenPointToRay(mousePosition);
-
-        // ตรวจทุก Collider ที่ Ray ชน
-        RaycastHit[] hits =
-            Physics.RaycastAll(ray);
-
-        // เรียงจากสิ่งที่อยู่ใกล้ Camera → ไกล Camera
-        System.Array.Sort(
-            hits,
-            (a, b) =>
-                a.distance.CompareTo(b.distance)
-        );
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
 
         foreach (RaycastHit hit in hits)
         {
-            // =========================
             // คลิก Player
-            // =========================
-
-            PlayerMove clickedPlayer =
-                hit.collider.GetComponent<PlayerMove>();
-
+            PlayerMove clickedPlayer = hit.collider.GetComponent<PlayerMove>();
             if (clickedPlayer != null)
             {
                 SelectPlayer(clickedPlayer);
                 return;
             }
 
-            // =========================
             // คลิก Tile
-            // =========================
-
-            Tile clickedTile =
-                hit.collider.GetComponent<Tile>();
-
+            Tile clickedTile = hit.collider.GetComponent<Tile>();
             if (clickedTile != null)
             {
-                if (!clickedTile.isWalkable)
-                    return;
+                // ถ้าเป็นช่องที่เดินไม่ได้ ให้เมินไปเลย
+                if (!clickedTile.isWalkable) return;
 
                 if (selectedPlayer != null)
                 {
-                    selectedPlayer.MoveToTile(
-                        clickedTile
-                    );
+                    // สั่งเดิน และปิดสีไฮไลต์ทั้งหมด
+                    selectedPlayer.MoveToTile(clickedTile);
+                    ClearHighlights();
                 }
-
                 return;
             }
-
-            // ถ้าเป็น Wall / Object อื่น
-            // ให้ข้ามไปดู Collider ถัดไป
         }
     }
 
-    private void SelectPlayer(
-        PlayerMove player)
+    private void SelectPlayer(PlayerMove player)
     {
+        ClearHighlights(); // ล้างสีเก่าทิ้งก่อน
         selectedPlayer = player;
+        Debug.Log("Selected: " + player.name);
 
-        Debug.Log(
-            "Selected: " +
-            player.name
-        );
+        // เปลี่ยนมาใช้ GridManager แปลงพิกัดตัวละครหาแผ่นพื้นแทนการยิง Raycast
+        Vector2Int gridPos = GridManager.Instance.WorldToGrid(player.transform.position);
+        Tile playerTile = GridManager.Instance.GetTile(gridPos);
+
+        if (playerTile != null)
+        {
+            // ดึงเฉพาะช่องที่เดินเชื่อมถึงกันได้จริงๆ (ไม่ทะลุกำแพง)
+            currentHighlightedTiles = Pathfinder.Instance.GetAllReachableTiles(playerTile);
+
+            foreach (Tile tile in currentHighlightedTiles)
+            {
+                tile.ToggleHighlight(true);
+            }
+        }
+        else
+        {
+            Debug.LogWarning("หาจุดที่ Player ยืนอยู่ไม่เจอ! เช็กพิกัด: " + gridPos);
+        }
+    }
+
+    private void ClearHighlights()
+    {
+        foreach (Tile tile in currentHighlightedTiles)
+        {
+            tile.ToggleHighlight(false);
+        }
+        currentHighlightedTiles.Clear();
     }
 }
