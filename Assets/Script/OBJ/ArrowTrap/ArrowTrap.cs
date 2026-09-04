@@ -1,15 +1,25 @@
+using System.Collections;
 using UnityEngine;
 
 public class ArrowTrap : MonoBehaviour
 {
     [SerializeField] private GameObject arrowPrefab;
     [SerializeField] private Transform firePoint;
-    [SerializeField] private float shootEvery = 2f;
+    [SerializeField] private float shootEvery = 1.5f;
     [SerializeField] private float arrowSpeed = 18f;
 
-    void Start()
+    void OnEnable()
     {
-        InvokeRepeating(nameof(Shoot), 1f, shootEvery);
+        StartCoroutine(ShootLoop());
+    }
+
+    IEnumerator ShootLoop()
+    {
+        while (true)
+        {
+            Shoot();
+            yield return new WaitForSeconds(shootEvery);
+        }
     }
 
     void Shoot()
@@ -21,6 +31,8 @@ public class ArrowTrap : MonoBehaviour
         );
 
         Rigidbody rb = arrow.GetComponent<Rigidbody>();
-        rb.linearVelocity = firePoint.forward * arrowSpeed;
+
+        if (rb != null)
+            rb.linearVelocity = firePoint.forward * arrowSpeed;
     }
 }
